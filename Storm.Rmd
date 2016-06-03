@@ -5,18 +5,78 @@ date: "31 May 2016"
 output: html_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+#Synopsis
+Consider writing your report as if it were to be read by a government or municipal manager who might be responsible for preparing for severe weather events and will need to prioritize resources for different types of events. However, there is no need to make any specific recommendations in your report.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r}
-summary(cars)
+#Data Processing
+
+```{r Load Data, cache=FALSE}
+# Analysis start from the raw CSV file containing the data
+# if exist then
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+zipfile <- "~/40 L&G/Coursera/ReproducibleResearch/Wk4_Project2/repdata-data-StormData.csv.bz2"
+if (!exists("dat", envir = .GlobalEnv)){
+        dat <- read.csv(zipfile)
+}
+
+head(dat)
+
+# Tidy
+# Convert EVTYPE all to upper
+library(dplyr)
+# library(tidyr)
+dat <- dat %>%
+        mutate(EVTYPE = toupper(EVTYPE))
+
+Event.Types <- unique(dat$EVTYPE)
+# Split event into
+        #type (cause) - wind, fire, rain, mudslide
+        #level - the degree of intensity, gale wind, etc
+        #geolocation - sea, urban, mountain
+# Explore
+
+
 ```
 
-You can also embed plots, for example:
 
-```{r, echo=FALSE}
-plot(cars)
+
+#Results
+##Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+```{r Most Harmful}
+
+# Add level 1 type of event 
+# wind
+
+# water
+
+# fire (incl heat)
+
+
+# Quantify Health Risk
+FatalityRisk <- 10
+InjuryRisk <- 5
+RiskLevels <- data.frame(Category = 5:1, Label = c("Disaster", "Significant", "Moderate", "Minor", "Minimal"))
+
+HarmfulEvents <- dat %>%
+        select(EVTYPE, FATALITIES, INJURIES) %>%
+        group_by(EVTYPE) %>%
+        summarise(Fatalities = sum(FATALITIES), Injuries = sum(INJURIES)) %>%
+        as.data.frame %>%
+        mutate(Risk = (FatalityRisk*Fatalities)+(InjuryRisk*Injuries)) %>%
+        filter(Risk > 0) %>%
+        arrange(desc(Risk)) %>%
+        mutate(Category = ntile(Risk, 5)) #Split into 5 categories
+
+HarmfulEvents <- merge(x = HarmfulEvents, y = RiskLevels, sort = FALSE)
+
+# Add intensity
+# Wind - Thunderstorm, High, Gusty
+
+plot(HarmfulEvents$EVTYPE, HarmfulEvents$Fatalities)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+##Across the United States, which types of events have the greatest economic consequences?
+

@@ -1,0 +1,241 @@
+---
+title: "ReadMe"
+author: "K. Huisamen"
+date: "02 June 2016"
+output: pdf_document
+---
+
+This document note exploratory journal entries
+
+```{r}
+# read the data
+row.names(HarmfulEvents) <- HarmfulEvents$EVTYPE
+
+```
+
+#Read all the records?
+The REFNUM show that the max is 902300, my dataset show 902297, which means I'm missing 3 records.
+
+
+#Encode the events
+Officially there is only 48 event types but in the database there are 985 unique event types.  To tidy the data it will encoded according to the event types as per the circular dated August 2007.
+
+```{r Tidy Event Types}
+library(dplyr)
+# 48 Standard Events
+ET <- list("Astronomical Low Tide" = "Astronomical Low Tide",
+        "Avalanche" = "Avalanche|Avalance",
+        "Blizzard" = "Blizzard",
+        "Coastal Flood" = "Coastal Flood",
+        "Cold/Wind Chill",
+        "Debris Flow",
+        "Dense Fog",
+        "Dense Smoke",
+        "Drought",
+        "Dust Devil",
+        "Dust Storm",
+        "Excessive Heat",
+        "Extreme Cold/Wind Chill",
+        "Flash Flood",
+        "Flood",
+        "Freezing Fog",
+        "Frost/Freeze",
+        "Funnel Cloud",
+        "Hail",
+        "Heat",
+        "Heavy Rain",
+        "Heavy Snow",
+        "High Surf",
+        "High Wind",
+        "Hurricane/Typhoon",
+        "Ice Storm",
+        "Lakeshore Flood",
+        "Lake-Effect Snow",
+        "Lightning",
+        "Marine Hail",
+        "Marine High Wind",
+        "Marine Strong Wind",
+        "Marine Thunderstorm Wind",
+        "Rip Current",
+        "Seiche",
+        "Sleet",
+        "Storm Tide",
+        "Strong Wind",
+        "Thunderstorm Wind",
+        "Tornado",
+        "Tropical Depression",
+        "Tropical Storm",
+        "Tsunami",
+        "Volcanic Ash",
+        "Waterspout",
+        "Wildfire",
+        "Winter Storm",
+        "Winter Weather")
+
+# Look in the list and for...each ET load the variations, 
+# match these variations in dat, append it to dat2. Create a vector that match any
+
+# Build the array of the column to be searched
+
+searchstring <- toupper(ET[[2]])
+
+# Do the for
+evfind <- dat %>%
+        select(EVTYPE, FATALITIES, INJURIES) %>%
+        filter(grepl(searchstring, EVTYPE)) %>%
+        mutate(Event = names(ET[2]))
+
+# add the records
+
+
+
+```
+
+
+#Types (Wind, Fire, Water)
+
+##Wind
+
+TORNADO
+TSTM
+TORNADOES
+
+__HURRICANE__
+
+__TYPHOON__
+
+#MARINE/Water/OCEANIC
+CURRENT
+TSUNAMI
+FLOOD
+HAIL
+SNOW
+
+#Fire/Heat/Cold THERMAL ENVIRONMENT
+HEAT
+LIGHTNING
+ICE
+WINTER
+FIRE
+BLIZZARD
+
+
+__AVALANCHE__ AVALANCHE
+
+__DEBRIS FLOW__ MUDSLIDE
+
+__HAIL__ HAIL
+
+__ICE__ GLAZE, ICE
+
+__STORM__  TROPICAL STORM, STORM SURGE
+
+##Magnitude
+
+Use default if none detected "Normal"
+
+__Normal__ Use if none of below detected.
+__Medium__
+__High__ EXCESSIVE, HEAVY, EXTREME
+
+5 - Disaster
+4 - Significant
+3 - Moderate
+2 - Minor
+1 - Minimal
+
+##Geo
+
+__FORREST__ FORREST, WILD
+
+#Fatalities and Injuries
+To determine the relationship make a plot.
+
+```{r Explore Fatalities and Injurues}
+library(dplyr)
+
+fi <- HarmfulEvents %>% select(Fatalities, Injuries)
+plot(fi)
+```
+
+One extreme outlier, which one is it?
+
+```{r identify outlier}
+HarmfulEvents[HarmfulEvents$Fatalities >= 5000,]
+
+```
+The above was an extreme incident.
+
+Looking into the distribution of the rest on a logscale
+
+```{r}
+plot(log10(fi))
+```
+
+It might be possible to group them to present a health risk decision tree
+
+#Hclustering and Denbdrogram, Heatmap
+Explore ways to show a decision tree
+
+```{r clustering}
+fi <- HarmfulEvents %>% select(Fatalities, Injuries)
+
+hClustering <- fi %>%
+        dist %>% hclust
+plot(hClustering, hang = -1, cex = 0.6, ylab = "Height")
+plot(hClustering)
+
+# Plot is way to deep, find ways to disply it
+dendro <- as.dendrogram(hClustering)
+
+nodePar <- list(lab.cex = 0.6, pch = c(NA, 19), 
+                cex = 0.7, col = "blue")
+plot(dendro, horiz = TRUE, nodePar = nodePar, rect.hclust(dendro, k = 2))
+# Draw rectangles around clusters
+rect.hclust(hc,k=2)
+
+cutDendro <- cut(dendro, h = (hClustering$height[10]+ 1))
+plot(cutDendro$lower[[33]], yaxt = "n", main = "Fatalities and Injuries")
+
+# or, zoom in
+plot(hClustering, xlim = c(1, 5), ylim = c(92000))
+
+```
+
+Try ggdendro
+```{r}
+
+
+```
+
+
+
+The heatmap
+
+```{r}
+
+dataMatrix <- as.matrix(fi)
+heatmap(dataMatrix)
+
+# Reduce and focus on top 10 RiskLevels
+dataMatrix <- as.matrix(head(fi, 40))
+heatmap(dataMatrix)
+```
+The top 
+
+
+Kmeans clustering , to include more variables
+```{r kmeans}
+fi <- HarmfulEvents %>% select(Fatalities, Injuries)
+dataMatrix <- as.matrix(fi)
+kmeansObj <- kmeans(dataMatrix, centers = 8)
+par(mfrow = c(1, 2))
+image(t(dataMatrix)[, nrow(dataMatrix):1], yaxt = "n", main = "Original Data")
+image(t(dataMatrix)[, order(kmeansObj$cluster)], yaxt = "n", main = "Clustered Data")
+```
+
+This looks like a dead end.
+
+Continue with the heatmap.
+
+
