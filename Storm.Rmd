@@ -26,15 +26,10 @@ head(dat)
 # Convert EVTYPE all to upper
 library(dplyr)
 # library(tidyr)
-dat <- dat %>%
-        mutate(EVTYPE = toupper(EVTYPE))
 
-Event.Types <- unique(dat$EVTYPE)
-# Split event into
-        #type (cause) - wind, fire, rain, mudslide
-        #level - the degree of intensity, gale wind, etc
-        #geolocation - sea, urban, mountain
-# Explore
+# Using the tidy data
+Event.Types <- unique(dat2$EVTYPE)
+
 
 
 ```
@@ -58,9 +53,12 @@ FatalityRisk <- 10
 InjuryRisk <- 5
 RiskLevels <- data.frame(Category = 5:1, Label = c("Disaster", "Significant", "Moderate", "Minor", "Minimal"))
 
-HarmfulEvents <- dat %>%
-        select(EVTYPE, FATALITIES, INJURIES) %>%
-        group_by(EVTYPE) %>%
+# Maybe use the mean values?
+
+# change here for the new list using different column????
+HarmfulEvents <- dat2 %>%
+        select(Event, FATALITIES, INJURIES) %>%
+        group_by(Event) %>%
         summarise(Fatalities = sum(FATALITIES), Injuries = sum(INJURIES)) %>%
         as.data.frame %>%
         mutate(Risk = (FatalityRisk*Fatalities)+(InjuryRisk*Injuries)) %>%
@@ -68,15 +66,25 @@ HarmfulEvents <- dat %>%
         arrange(desc(Risk)) %>%
         mutate(Category = ntile(Risk, 5)) #Split into 5 categories
 
+row.names(HarmfulEvents) <- HarmfulEvents$Event
 HarmfulEvents <- merge(x = HarmfulEvents, y = RiskLevels, sort = FALSE)
 
-# Add intensity
-# Wind - Thunderstorm, High, Gusty
+fi <- HarmfulEvents %>% 
+        filter(Event != "Tornado") %>%
+        select(Fatalities, Injuries, Event)
+row.names(fi) <- fi$Event
 
-plot(HarmfulEvents$EVTYPE, HarmfulEvents$Fatalities)
+hClustering <- fi %>%
+        dist %>% hclust
+plot(hClustering, hang = -1, cex = 0.6, ylab = "Height", labels = fi$Event, main = "Harmfull Events")
 
 ```
 
 
 ##Across the United States, which types of events have the greatest economic consequences?
+```{r}
+# EconomicEvents
+
+
+```
 

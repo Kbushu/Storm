@@ -18,7 +18,11 @@ The REFNUM show that the max is 902300, my dataset show 902297, which means I'm 
 
 
 #Encode the events
-Officially there is only 48 event types but in the database there are 985 unique event types.  To tidy the data it will encoded according to the event types as per the circular dated August 2007.
+```{r Event Types}
+Event.Types <- unique(dat$EVTYPE)
+```
+
+Officially there is only 48 event types but in the database there are 898 unique event types.  To tidy the data it will encoded according to the event types as per the circular dated August 2007.
 
 ```{r Tidy Event Types}
 library(dplyr)
@@ -26,127 +30,75 @@ library(dplyr)
 ET <- list("Astronomical Low Tide" = "Astronomical Low Tide",
         "Avalanche" = "Avalanche|Avalance",
         "Blizzard" = "Blizzard",
-        "Coastal Flood" = "Coastal Flood",
-        "Cold/Wind Chill",
-        "Debris Flow",
-        "Dense Fog",
-        "Dense Smoke",
-        "Drought",
-        "Dust Devil",
-        "Dust Storm",
-        "Excessive Heat",
-        "Extreme Cold/Wind Chill",
-        "Flash Flood",
-        "Flood",
-        "Freezing Fog",
-        "Frost/Freeze",
-        "Funnel Cloud",
-        "Hail",
-        "Heat",
-        "Heavy Rain",
-        "Heavy Snow",
-        "High Surf",
-        "High Wind",
-        "Hurricane/Typhoon",
-        "Ice Storm",
-        "Lakeshore Flood",
-        "Lake-Effect Snow",
-        "Lightning",
-        "Marine Hail",
-        "Marine High Wind",
-        "Marine Strong Wind",
-        "Marine Thunderstorm Wind",
-        "Rip Current",
-        "Seiche",
-        "Sleet",
-        "Storm Tide",
-        "Strong Wind",
-        "Thunderstorm Wind",
-        "Tornado",
-        "Tropical Depression",
-        "Tropical Storm",
-        "Tsunami",
-        "Volcanic Ash",
-        "Waterspout",
-        "Wildfire",
-        "Winter Storm",
-        "Winter Weather")
+        "Coastal Flood" = "Coastal Flood|Tidal Flood",
+        "Cold/Wind Chill"= "Cold/Wind Chill|Cold",
+        "Debris Flow" = "Debris Flow",
+        "Dense Fog" = "Dense Fog|Fog",
+        "Dense Smoke" = "Dense Smoke",
+        "Drought" = "Drought",
+        "Dust Devil" = "Dust Devil",
+        "Dust Storm" = "Dust Storm",
+        "Excessive Heat" = "Excessive Heat|Extreme Heat|Heat Wave|Record Heat",
+        "Extreme Cold/Wind Chill" = "Extreme Cold/Wind Chill|Cold|Wind Chill",
+        "Flash Flood" = "Flash Flood|Flash",
+        "Flood" = "^Flood|Flooding|River Flood|Erosion",
+        "Freezing Fog" = "Freezing Fog",
+        "Frost/Freeze" = "Frost|Freez",
+        "Funnel Cloud" = "Funnel Cloud",
+        "Hail" = "Hail",
+        "Heat" = "^Heat",
+        "Heavy Rain" = "Heavy Rain",
+        "Heavy Snow" = "Heavy Snow|Snow",
+        "High Surf" = "High Surf|Surf",
+        "High Wind" = "High Wind",
+        "Hurricane/Typhoon" = "Hurricane|Typhoon",
+        "Ice Storm" = "Ice Storm",
+        "Lakeshore Flood" = "Lakeshore Flood",
+        "Lake-Effect Snow" = "Lake-Effect Snow",
+        "Lightning" = "Lightning",
+        "Marine Hail" = "Marine Hail",
+        "Marine High Wind" = "Marine High Wind|Heavy Seas",
+        "Marine Strong Wind" = "Marine High Wind",
+        "Marine Thunderstorm Wind" = "Marine Thunderstorm Wind|TSTM|MARINE MISHAP|Coastalstorm|Coastal Storm",
+        "Rip Current" = "Rip Current",
+        "Seiche" = "Seiche",
+        "Sleet" = "Sleet",
+        "Storm Tide" = "Storm Tide|Storm Surge",
+        "Strong Wind" = "Strong Wind",
+        "Thunderstorm Wind" = "^Thunder",
+        "Tornado" = "Tornado",
+        "Tropical Depression" = "Tropical Depression",
+        "Tropical Storm" = "Tropical Storm",
+        "Tsunami" = "Tsunami",
+        "Volcanic Ash" = "Volcanic Ash",
+        "Waterspout" = "Waterspout",
+        "Wildfire" = "Wildfire|Forest",
+        "Winter Storm" = "Winter Storm",
+        "Winter Weather" = "Winter Weather")
+
+# Tidy the events by setting all to uppercase, also to make the grepl easier.
+dat <- dat %>%
+        mutate(EVTYPE = toupper(EVTYPE))
 
 # Look in the list and for...each ET load the variations, 
-# match these variations in dat, append it to dat2. Create a vector that match any
+# match these variations in dat, append it to dat2.
 
-# Build the array of the column to be searched
-
-searchstring <- toupper(ET[[2]])
-
-# Do the for
-evfind <- dat %>%
-        select(EVTYPE, FATALITIES, INJURIES) %>%
-        filter(grepl(searchstring, EVTYPE)) %>%
-        mutate(Event = names(ET[2]))
-
-# add the records
-
-
+dat2 <- data.frame(Event= NULL, FATALITIES = NULL, INJURIES = NULL)
+for (i in 1:length(ET)){
+        searchstring <- toupper(ET[[i]])
+        print(searchstring)
+        tidyeventlist <- dat %>%
+                select(EVTYPE, FATALITIES, INJURIES) %>%
+                filter(grepl(searchstring, EVTYPE)) %>%
+                mutate(Event = names(ET[i]))
+        dat2 <- rbind(dat2, tidyeventlist)
+}
 
 ```
+Assuming that if it's there's three event types for one observaton then there was three event types during that observation, so three event types would be accounted for, this will increase the data set with two additional records. The new data set is now 902342 observations, from 902297 observations originally.
 
+# Create a summary of the events 
 
-#Types (Wind, Fire, Water)
-
-##Wind
-
-TORNADO
-TSTM
-TORNADOES
-
-__HURRICANE__
-
-__TYPHOON__
-
-#MARINE/Water/OCEANIC
-CURRENT
-TSUNAMI
-FLOOD
-HAIL
-SNOW
-
-#Fire/Heat/Cold THERMAL ENVIRONMENT
-HEAT
-LIGHTNING
-ICE
-WINTER
-FIRE
-BLIZZARD
-
-
-__AVALANCHE__ AVALANCHE
-
-__DEBRIS FLOW__ MUDSLIDE
-
-__HAIL__ HAIL
-
-__ICE__ GLAZE, ICE
-
-__STORM__  TROPICAL STORM, STORM SURGE
-
-##Magnitude
-
-Use default if none detected "Normal"
-
-__Normal__ Use if none of below detected.
-__Medium__
-__High__ EXCESSIVE, HEAVY, EXTREME
-
-5 - Disaster
-4 - Significant
-3 - Moderate
-2 - Minor
-1 - Minimal
-
-##Geo
-
-__FORREST__ FORREST, WILD
 
 #Fatalities and Injuries
 To determine the relationship make a plot.
@@ -171,19 +123,20 @@ Looking into the distribution of the rest on a logscale
 ```{r}
 plot(log10(fi))
 ```
-
-It might be possible to group them to present a health risk decision tree
+As the injuries increase so does the fatalities, it also looks like there are groups of data. It might be possible to group them to present a health risk decision tree
 
 #Hclustering and Denbdrogram, Heatmap
 Explore ways to show a decision tree
 
 ```{r clustering}
-fi <- HarmfulEvents %>% select(Fatalities, Injuries)
+fi <- HarmfulEvents %>% 
+        # filter(Event != "Tornado") %>%
+        select(Fatalities, Injuries)
 
 hClustering <- fi %>%
         dist %>% hclust
 plot(hClustering, hang = -1, cex = 0.6, ylab = "Height")
-plot(hClustering)
+
 
 # Plot is way to deep, find ways to disply it
 dendro <- as.dendrogram(hClustering)
@@ -204,8 +157,18 @@ plot(hClustering, xlim = c(1, 5), ylim = c(92000))
 
 Try ggdendro
 ```{r}
+library(ggplot2)
+library(ggdendro)
 
-
+ddata <- dendro_data(dendro, type = "rectangle")
+p <- ggplot(segment(ddata)) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) + 
+  coord_flip() + 
+  scale_y_reverse(expand = c(0.2, 0))
+p
+p + 
+  coord_flip() + 
+  theme_dendro()
 ```
 
 
@@ -214,12 +177,12 @@ The heatmap
 
 ```{r}
 
-dataMatrix <- as.matrix(fi)
+dataMatrix <- as.matrix(fi[,1:2])
 heatmap(dataMatrix)
 
 # Reduce and focus on top 10 RiskLevels
 dataMatrix <- as.matrix(head(fi, 40))
-heatmap(dataMatrix)
+heatmap(dataMatrix, margins = c(10, 2))
 ```
 The top 
 
@@ -228,7 +191,7 @@ Kmeans clustering , to include more variables
 ```{r kmeans}
 fi <- HarmfulEvents %>% select(Fatalities, Injuries)
 dataMatrix <- as.matrix(fi)
-kmeansObj <- kmeans(dataMatrix, centers = 8)
+kmeansObj <- kmeans(dataMatrix, centers = 4)
 par(mfrow = c(1, 2))
 image(t(dataMatrix)[, nrow(dataMatrix):1], yaxt = "n", main = "Original Data")
 image(t(dataMatrix)[, order(kmeansObj$cluster)], yaxt = "n", main = "Clustered Data")
@@ -236,6 +199,11 @@ image(t(dataMatrix)[, order(kmeansObj$cluster)], yaxt = "n", main = "Clustered D
 
 This looks like a dead end.
 
-Continue with the heatmap.
+Continue with the histogram
+```{r}
+
+barplot(names.arg = HarmfulEvents$Event, height = log10(HarmfulEvents$Risk), horiz = TRUE, axes = FALSE, col = HarmfulEvents$Label, space = 1, main = "Event Risk Levels", ylab = "Event", xlab = "Risk", axis.lty = 1, offset = 5000)
+```
+
 
 
