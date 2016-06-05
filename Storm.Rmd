@@ -2,7 +2,7 @@
 title: "Health and Economic Risks of US Weather"
 author: "K. Huisamen"
 date: "5 June 2016"
-output: pdf_document
+output: html_document
 ---
 
 #Synopsis
