@@ -1,15 +1,18 @@
 ---
-title: "Storm"
+title: "Health and Economic Risks of US Weather"
 author: "K. Huisamen"
-date: "31 May 2016"
-output: html_document
+date: "5 June 2016"
+output: pdf_document
 ---
 
 #Synopsis
-Consider writing your report as if it were to be read by a government or municipal manager who might be responsible for preparing for severe weather events and will need to prioritize resources for different types of events. However, there is no need to make any specific recommendations in your report.
-
+Good weather observations feedback can support future decisons in allocating critical resources to minimise injuries and fatalities. For example droughts have significant impact but is not a major health risk, but heat is a major health risk with a much lower economic impact. By having this information available proper resources can be allocated to ensure the health and safety of the inhabitants.
 
 #Data Processing
+
+This weather data from 1950 to November 2011, contains historic observations on the health and economic impact of the various weather events.  In order to use this information some processing is required.  The events in the data was cleaned by checking for common mistakes and categorisation errors to align it with the standard weather circular.^[[NATIONAL WEATHER SERVICE INSTRUCTION 10-1605](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)] First the costing was derived by making some assumptions about the missing information. Where cost unit of measure was missing, or non-standard reference used it is assumed to be in the thousands.  Numbers in the unit of measure column was assumed that it indicated the number of zero's and allocated as such to the various applicable unit of measure. Where a observation referenced multiple event types additional observation was registered for each event type.
+
+##Download raw data from the internet.
 
 ```{r Load Data, cache=TRUE}
 # Analysis start from the raw CSV file containing the data
@@ -24,7 +27,8 @@ if (!exists("dat", envir = .GlobalEnv)){
                         na.strings=c(""," ","NA"))#Blanks are real sods to catch
 }
 ```
-This weather data is downloaded from the repository on....
+
+##Tidy Economic Cost
 
 ```{r Tidy Damage Cost}
 library(dplyr)
@@ -92,7 +96,11 @@ dat4 <- dat3 %>% mutate(ID, EVENT = toupper(EVTYPE.x),
         select(ID, EVENT, COST, FATALITIES,INJURIES)
 ```
 
-The property and crop damage is derived from the ....
+At this point the costing is complete and events are addressed.
+
+##Tidy Event Types
+
+Event types are consolidated into the standard event list and a total risk value is assigned based on the number of fatalities and injuries. This is also where the event summary is compiled in terms of risk and cost. Five risk levels have been incorporated if goverment agencies wish to implement a standard operating procedure system.
 
 ```{r Tidy Event Data}
 # 48 Standard Events
@@ -155,7 +163,6 @@ for (i in 1:length(ET)){
 }
 
 rm(tidyeventlist)
-# Using the tidy data
 Event.Types <- unique(dat2$EVENT)
 
 # Quantify Health Risk
@@ -177,7 +184,11 @@ HarmfulEvents <- merge(x = HarmfulEvents, y = RiskLevels, sort = FALSE)
 ```
 
 #Results
+
 ##Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+The bar plot below is arranged by priority, indicating the top item is the most signifcant health risk. The plot is color coded for a 5 level standard operating procedure system.
+
 ```{r Most Harmful}
 
 # Make a plot of the risk levels
@@ -190,8 +201,8 @@ barplot(names.arg = rev(HarmfulEvents$EVENT),
         axes = FALSE,
         col = HarmfulEvents$Label,
         space = 1,
-        main = "Event HealthRisk Levels",
-        xlab = "HealthRisk",
+        main = "Event Health Risk Levels",
+        xlab = "Health Risk",
         axis.lty = 1
         )
 
@@ -199,6 +210,9 @@ barplot(names.arg = rev(HarmfulEvents$EVENT),
 
 
 ##Across the United States, which types of events have the greatest economic consequences?
+
+The bar plot below is arranged by priority, indicating the top item is the most signifcant economic risk. The plot is color coded for a 5 level standard operating procedure system. A __log scale__ is used due to the high variation in cost.
+
 ```{r}
 # EconomicEvents
 EconomicEvents <- HarmfulEvents %>%
@@ -206,10 +220,10 @@ EconomicEvents <- HarmfulEvents %>%
 par(las=2) #Set the labels horizontal
 par(mar = c(1,15,1,1)) #Give the labels some space
 barplot(names.arg = rev(EconomicEvents$EVENT),
-        height = rev(EconomicEvents$Cost),
+        height = rev(log2(EconomicEvents$Cost)),
         horiz = TRUE, #Change to horizontal histogram
         axes = FALSE,
-        col = EconomicEvents$Label,
+        col = HarmfulEvents$Label,
         space = 1,
         main = "Event Economic Impact",
         xlab = "Cost",
