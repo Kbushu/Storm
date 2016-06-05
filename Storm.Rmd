@@ -11,18 +11,18 @@ Consider writing your report as if it were to be read by a government or municip
 
 #Data Processing
 
-```{r Load Data, cache=FALSE}
+```{r Load Data, cache=TRUE}
 # Analysis start from the raw CSV file containing the data
 # if exist then
 url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
 zipfile <- "~/40 L&G/Coursera/ReproducibleResearch/Wk4_Project2/repdata-data-StormData.csv.bz2"
 
-# if (!exists("dat", envir = .GlobalEnv)){
-        # download.file(url, zipfile)
-        # datedownload <- date()
+if (!exists("dat", envir = .GlobalEnv)){
+        download.file(url, zipfile)
+        datedownload <- date()
         dat <- read.csv(zipfile, strip.white = TRUE,
                         na.strings=c(""," ","NA"))#Blanks are real sods to catch
-# }
+}
 ```
 This weather data is downloaded from the repository on....
 
@@ -148,9 +148,7 @@ ET <- list("Astronomical Low Tide" = "Astronomical Low Tide",
 dat2 <- data.frame(ID = NULL, EVENT = NULL, COST = NULL, FATALITIES = NULL, INJURIES = NULL)
 for (i in 1:length(ET)){
         searchstring <- toupper(ET[[i]])
-        print(searchstring)
         tidyeventlist <- dat4 %>%
-                # select(EVTYPE, FATALITIES, INJURIES) %>%
                 filter(grepl(searchstring, EVENT)) %>%
                 mutate(EVENT = names(ET[i]))
         dat2 <- rbind(dat2, tidyeventlist)
@@ -166,10 +164,8 @@ InjuryRisk <- 1
 RiskLevels <- data.frame(Category = 5:1, Label = c("Disaster", "Significant", "Moderate", "Minor", "Minimal"))
 # change here for the new list using different column for cost????
 HarmfulEvents <- dat2 %>%
-        # select(EVENT, FATALITIES, INJURIES, COST) %>%
         group_by(EVENT) %>%
         summarise(Fatalities = mean(FATALITIES), Injuries = mean(INJURIES), Cost = mean(COST)) %>%
-        # as.data.frame %>%
         mutate(HealthRisk = (FatalityRisk*Fatalities)+(InjuryRisk*Injuries)) %>%
         filter(HealthRisk > 0) %>%
         arrange(desc(HealthRisk)) %>%
@@ -205,13 +201,15 @@ barplot(names.arg = rev(HarmfulEvents$EVENT),
 ##Across the United States, which types of events have the greatest economic consequences?
 ```{r}
 # EconomicEvents
+EconomicEvents <- HarmfulEvents %>%
+        arrange(desc(Cost))
 par(las=2) #Set the labels horizontal
 par(mar = c(1,15,1,1)) #Give the labels some space
-barplot(names.arg = rev(HarmfulEvents$EVENT),
-        height = rev(HarmfulEvents$Cost),
+barplot(names.arg = rev(EconomicEvents$EVENT),
+        height = rev(EconomicEvents$Cost),
         horiz = TRUE, #Change to horizontal histogram
         axes = FALSE,
-        col = HarmfulEvents$Label,
+        col = EconomicEvents$Label,
         space = 1,
         main = "Event Economic Impact",
         xlab = "Cost",
