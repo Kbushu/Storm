@@ -16,67 +16,188 @@ Consider writing your report as if it were to be read by a government or municip
 # if exist then
 url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
 zipfile <- "~/40 L&G/Coursera/ReproducibleResearch/Wk4_Project2/repdata-data-StormData.csv.bz2"
-if (!exists("dat", envir = .GlobalEnv)){
-        dat <- read.csv(zipfile)
-}
 
-head(dat)
+# if (!exists("dat", envir = .GlobalEnv)){
+        # download.file(url, zipfile)
+        # datedownload <- date()
+        dat <- read.csv(zipfile, strip.white = TRUE,
+                        na.strings=c(""," ","NA"))#Blanks are real sods to catch
+# }
+```
+This weather data is downloaded from the repository on....
 
-# Tidy
-# Convert EVTYPE all to upper
+```{r Tidy Damage Cost}
 library(dplyr)
-# library(tidyr)
 
-# Using the tidy data
-Event.Types <- unique(dat2$EVTYPE)
+dat2 <- dat %>% select(EVTYPE, PROPDMGEXP, CROPDMGEXP, PROPDMG, CROPDMG, FATALITIES, INJURIES) %>%
+        mutate(ID = seq_along(EVTYPE))
 
+# Substitute H
+DMG <- c("H", "h")
+datHprop <- dat2 %>%
+        filter(PROPDMGEXP %in% DMG) %>%
+               mutate(PROPDMGEXPtidy = "H", DMGUOM = 100, PropCost = PROPDMG*100)
+# table(datHprop$PROPDMGEXPtidy)
 
+# Substitute K
+DMG <- c("K", "k","-", "?", "+", "0", "1", "2", "3", "4", "5")
+datKprop <- dat2 %>%
+        filter(PROPDMGEXP %in% DMG|is.na(PROPDMGEXP)) %>%
+               mutate(PROPDMGEXPtidy = "K", DMGUOM = 1000, PropCost = PROPDMG*1000)
+# table(datKprop$PROPDMGEXPtidy)
 
+datKcrop <- dat2 %>%
+        filter(CROPDMGEXP %in% DMG|is.na(CROPDMGEXP)) %>%
+               mutate(CROPDMGEXPtidy = "K", DMGUOM = 1000, CropCost = CROPDMG*1000)
+# table(datKcrop$CROPDMGEXPtidy)
+
+# Substitute M
+DMG <- c("M", "m", "6", "7", "8")
+datMprop <- dat2 %>%
+        filter(PROPDMGEXP %in% DMG) %>%
+               mutate(PROPDMGEXPtidy = "M", DMGUOM = 1000000, PropCost = PROPDMG*1000000)
+# table(datMprop$PROPDMGEXPtidy)
+
+datMcrop <- dat2 %>%
+        filter(CROPDMGEXP %in% DMG) %>%
+               mutate(CROPDMGEXPtidy = "M", DMGUOM = 1000000, CropCost = CROPDMG*1000000)
+# table(datMcrop$CROPDMGEXPtidy)
+
+# Substitute B
+DMG <- c("B", "b")
+datBprop <- dat2 %>%
+        filter(PROPDMGEXP %in% DMG) %>%
+               mutate(PROPDMGEXPtidy = "B", DMGUOM = 1000000000, PropCost = PROPDMG*1000000000)
+# table(datBprop$PROPDMGEXPtidy)
+
+datBcrop <- dat2 %>%
+        filter(CROPDMGEXP %in% DMG) %>%
+               mutate(CROPDMGEXPtidy = "B", DMGUOM = 1000000000, CropCost = CROPDMG*1000000000)
+# table(datBcrop$CROPDMGEXPtidy)
+
+# Combine rows
+datcrop <- rbind(datKcrop, datMcrop, datBcrop)
+# table(datcrop$CROPDMGEXPtidy)
+
+datprop <- rbind(datHprop, datKprop, datMprop, datBprop)
+# table(datprop$PROPDMGEXPtidy)
+
+# Combine Columns
+dat3 <- merge(datprop, datcrop, by.x = "ID", by.y = "ID")
+
+dat4 <- dat3 %>% mutate(ID, EVENT = toupper(EVTYPE.x), 
+                        COST = PropCost+CropCost, 
+                        FATALITIES = FATALITIES.x,
+                        INJURIES = INJURIES.x) %>%
+        select(ID, EVENT, COST, FATALITIES,INJURIES)
 ```
 
+The property and crop damage is derived from the ....
 
+```{r Tidy Event Data}
+# 48 Standard Events
+ET <- list("Astronomical Low Tide" = "Astronomical Low Tide",
+        "Avalanche" = "Avalanche|Avalance",
+        "Blizzard" = "Blizzard",
+        "Coastal Flood" = "Coastal Flood|Tidal Flood",
+        "Cold/Wind Chill"= "Cold/Wind Chill|Cold",
+        "Debris Flow" = "Debris Flow",
+        "Dense Fog" = "Dense Fog|Fog",
+        "Dense Smoke" = "Dense Smoke",
+        "Drought" = "Drought",
+        "Dust Devil" = "Dust Devil",
+        "Dust Storm" = "Dust Storm",
+        "Excessive Heat" = "Excessive Heat|Extreme Heat|Heat Wave|Record Heat",
+        "Extreme Cold/Wind Chill" = "Extreme Cold/Wind Chill|Cold|Wind Chill",
+        "Flash Flood" = "Flash Flood|Flash",
+        "Flood" = "^Flood|Flooding|River Flood|Erosion",
+        "Freezing Fog" = "Freezing Fog",
+        "Frost/Freeze" = "Frost|Freez",
+        "Funnel Cloud" = "Funnel Cloud",
+        "Hail" = "Hail",
+        "Heat" = "^Heat",
+        "Heavy Rain" = "Heavy Rain",
+        "Heavy Snow" = "Heavy Snow|Snow",
+        "High Surf" = "High Surf|Surf",
+        "High Wind" = "High Wind",
+        "Hurricane/Typhoon" = "Hurricane|Typhoon",
+        "Ice Storm" = "Ice Storm",
+        "Lakeshore Flood" = "Lakeshore Flood",
+        "Lake-Effect Snow" = "Lake-Effect Snow",
+        "Lightning" = "Lightning",
+        "Marine Hail" = "Marine Hail",
+        "Marine High Wind" = "Marine High Wind|Heavy Seas",
+        "Marine Strong Wind" = "Marine High Wind",
+        "Marine Thunderstorm Wind" = "Marine Thunderstorm Wind|TSTM|MARINE MISHAP|Coastalstorm|Coastal Storm",
+        "Rip Current" = "Rip Current",
+        "Seiche" = "Seiche",
+        "Sleet" = "Sleet",
+        "Storm Tide" = "Storm Tide|Storm Surge",
+        "Strong Wind" = "Strong Wind",
+        "Thunderstorm Wind" = "^Thunder",
+        "Tornado" = "Tornado",
+        "Tropical Depression" = "Tropical Depression",
+        "Tropical Storm" = "Tropical Storm",
+        "Tsunami" = "Tsunami",
+        "Volcanic Ash" = "Volcanic Ash",
+        "Waterspout" = "Waterspout",
+        "Wildfire" = "Wildfire|Forest",
+        "Winter Storm" = "Winter Storm",
+        "Winter Weather" = "Winter Weather")
+
+dat2 <- data.frame(ID = NULL, EVENT = NULL, COST = NULL, FATALITIES = NULL, INJURIES = NULL)
+for (i in 1:length(ET)){
+        searchstring <- toupper(ET[[i]])
+        print(searchstring)
+        tidyeventlist <- dat4 %>%
+                # select(EVTYPE, FATALITIES, INJURIES) %>%
+                filter(grepl(searchstring, EVENT)) %>%
+                mutate(EVENT = names(ET[i]))
+        dat2 <- rbind(dat2, tidyeventlist)
+}
+
+rm(tidyeventlist)
+# Using the tidy data
+Event.Types <- unique(dat2$EVENT)
+
+# Quantify Health Risk
+FatalityRisk <- 2
+InjuryRisk <- 1
+RiskLevels <- data.frame(Category = 5:1, Label = c("Disaster", "Significant", "Moderate", "Minor", "Minimal"))
+# change here for the new list using different column for cost????
+HarmfulEvents <- dat2 %>%
+        # select(EVENT, FATALITIES, INJURIES, COST) %>%
+        group_by(EVENT) %>%
+        summarise(Fatalities = mean(FATALITIES), Injuries = mean(INJURIES), Cost = mean(COST)) %>%
+        # as.data.frame %>%
+        mutate(HealthRisk = (FatalityRisk*Fatalities)+(InjuryRisk*Injuries)) %>%
+        filter(HealthRisk > 0) %>%
+        arrange(desc(HealthRisk)) %>%
+        mutate(Category = ntile(HealthRisk, 5)) #Split into 5 categories
+
+row.names(HarmfulEvents) <- HarmfulEvents$EVENT
+HarmfulEvents <- merge(x = HarmfulEvents, y = RiskLevels, sort = FALSE)
+
+```
 
 #Results
 ##Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
 ```{r Most Harmful}
 
-# Add level 1 type of event 
-# wind
-
-# water
-
-# fire (incl heat)
-
-
-# Quantify Health Risk
-FatalityRisk <- 10
-InjuryRisk <- 5
-RiskLevels <- data.frame(Category = 5:1, Label = c("Disaster", "Significant", "Moderate", "Minor", "Minimal"))
-
-# Maybe use the mean values?
-
-# change here for the new list using different column????
-HarmfulEvents <- dat2 %>%
-        select(Event, FATALITIES, INJURIES) %>%
-        group_by(Event) %>%
-        summarise(Fatalities = sum(FATALITIES), Injuries = sum(INJURIES)) %>%
-        as.data.frame %>%
-        mutate(Risk = (FatalityRisk*Fatalities)+(InjuryRisk*Injuries)) %>%
-        filter(Risk > 0) %>%
-        arrange(desc(Risk)) %>%
-        mutate(Category = ntile(Risk, 5)) #Split into 5 categories
-
-row.names(HarmfulEvents) <- HarmfulEvents$Event
-HarmfulEvents <- merge(x = HarmfulEvents, y = RiskLevels, sort = FALSE)
-
-fi <- HarmfulEvents %>% 
-        filter(Event != "Tornado") %>%
-        select(Fatalities, Injuries, Event)
-row.names(fi) <- fi$Event
-
-hClustering <- fi %>%
-        dist %>% hclust
-plot(hClustering, hang = -1, cex = 0.6, ylab = "Height", labels = fi$Event, main = "Harmfull Events")
+# Make a plot of the risk levels
+old.par <- par(no.readonly=T) #backup margin settings
+par(las=2) #Set the labels horizontal
+par(mar = c(1,15,1,1)) #Give the labels some space
+barplot(names.arg = rev(HarmfulEvents$EVENT),
+        height = rev(HarmfulEvents$HealthRisk),
+        horiz = TRUE, #Change to horizontal histogram
+        axes = FALSE,
+        col = HarmfulEvents$Label,
+        space = 1,
+        main = "Event HealthRisk Levels",
+        xlab = "HealthRisk",
+        axis.lty = 1
+        )
 
 ```
 
@@ -84,7 +205,18 @@ plot(hClustering, hang = -1, cex = 0.6, ylab = "Height", labels = fi$Event, main
 ##Across the United States, which types of events have the greatest economic consequences?
 ```{r}
 # EconomicEvents
-
-
+par(las=2) #Set the labels horizontal
+par(mar = c(1,15,1,1)) #Give the labels some space
+barplot(names.arg = rev(HarmfulEvents$EVENT),
+        height = rev(HarmfulEvents$Cost),
+        horiz = TRUE, #Change to horizontal histogram
+        axes = FALSE,
+        col = HarmfulEvents$Label,
+        space = 1,
+        main = "Event Economic Impact",
+        xlab = "Cost",
+        axis.lty = 1
+        )
+par <- par(old.par) # reset
 ```
 

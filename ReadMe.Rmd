@@ -98,6 +98,21 @@ for (i in 1:length(ET)){
 Assuming that if it's there's three event types for one observaton then there was three event types during that observation, so three event types would be accounted for, this will increase the data set with two additional records. The new data set is now 902342 observations, from 902297 observations originally.
 
 # Create a summary of the events 
+```{r}
+# Sum the events
+HarmfulEvents <- dat2 %>%
+        select(Event, FATALITIES, INJURIES) %>%
+        group_by(Event) %>%
+        summarise(Fatalities = sum(FATALITIES), Injuries = sum(INJURIES)) %>%
+        as.data.frame %>%
+        mutate(Risk = (FatalityRisk*Fatalities)+(InjuryRisk*Injuries)) %>%
+        filter(Risk > 0) %>%
+        arrange(desc(Risk)) %>%
+        mutate(Category = ntile(Risk, 5)) #Split into 5 categories
+
+row.names(HarmfulEvents) <- HarmfulEvents$Event
+HarmfulEvents <- merge(x = HarmfulEvents, y = RiskLevels, sort = FALSE)
+```
 
 
 #Fatalities and Injuries
@@ -125,7 +140,48 @@ plot(log10(fi))
 ```
 As the injuries increase so does the fatalities, it also looks like there are groups of data. It might be possible to group them to present a health risk decision tree
 
-#Hclustering and Denbdrogram, Heatmap
+#Histogram/Barplot as possible means to simply show ranking
+```{r}
+barplot(names.arg = HarmfulEvents$Event, height = log10(HarmfulEvents$Risk), horiz = TRUE, axes = FALSE, col = HarmfulEvents$Label, space = 1, main = "Event Risk Levels", ylab = "Event", xlab = "Risk", axis.lty = 1, offset = 5000)
+```
+
+#Explore using the mean values rather than the sum
+
+```{r Explore mean}
+HarmfulEvents <- dat2 %>%
+        select(Event, FATALITIES, INJURIES) %>%
+        group_by(Event) %>%
+        summarise(Fatalities = mean(FATALITIES), Injuries = mean(INJURIES)) %>%
+        as.data.frame %>%
+        mutate(Risk = (FatalityRisk*Fatalities)+(InjuryRisk*Injuries)) %>%
+        filter(Risk > 0) %>%
+        arrange(desc(Risk)) %>%
+        mutate(Category = ntile(Risk, 5)) #Split into 5 categories
+
+row.names(HarmfulEvents) <- HarmfulEvents$Event
+HarmfulEvents <- merge(x = HarmfulEvents, y = RiskLevels, sort = FALSE)
+
+old.par <- par(no.readonly=T) 
+par(las=2) #Set the labels horizontal
+par(mar = c(1,15,1,1)) #Give the labels some space
+barplot(names.arg = rev(HarmfulEvents$Event),
+        height = rev(HarmfulEvents$Risk),
+        horiz = TRUE, #Change to horizontal histogram
+        axes = FALSE,
+        col = HarmfulEvents$Label,
+        space = 1,
+        main = "Event Risk Levels",
+        xlab = "Risk",
+        axis.lty = 1
+        )
+```
+
+row.names(HarmfulEvents) <- HarmfulEvents$Event
+HarmfulEvents <- merge(x = HarmfulEvents, y = RiskLevels, sort = FALSE)
+
+#Other possible layouts
+
+##Hclustering and Denbdrogram, Heatmap
 Explore ways to show a decision tree
 
 ```{r clustering}
@@ -136,7 +192,6 @@ fi <- HarmfulEvents %>%
 hClustering <- fi %>%
         dist %>% hclust
 plot(hClustering, hang = -1, cex = 0.6, ylab = "Height")
-
 
 # Plot is way to deep, find ways to disply it
 dendro <- as.dendrogram(hClustering)
@@ -171,9 +226,7 @@ p +
   theme_dendro()
 ```
 
-
-
-The heatmap
+##The heatmap
 
 ```{r}
 
@@ -184,10 +237,10 @@ heatmap(dataMatrix)
 dataMatrix <- as.matrix(head(fi, 40))
 heatmap(dataMatrix, margins = c(10, 2))
 ```
-The top 
 
 
-Kmeans clustering , to include more variables
+
+##Kmeans clustering , to include more variables
 ```{r kmeans}
 fi <- HarmfulEvents %>% select(Fatalities, Injuries)
 dataMatrix <- as.matrix(fi)
@@ -199,10 +252,150 @@ image(t(dataMatrix)[, order(kmeansObj$cluster)], yaxt = "n", main = "Clustered D
 
 This looks like a dead end.
 
-Continue with the histogram
-```{r}
 
-barplot(names.arg = HarmfulEvents$Event, height = log10(HarmfulEvents$Risk), horiz = TRUE, axes = FALSE, col = HarmfulEvents$Label, space = 1, main = "Event Risk Levels", ylab = "Event", xlab = "Risk", axis.lty = 1, offset = 5000)
+#Question 2 - Economic impact
+Fields used for capturing is property and crop.
+
+*  Property Damage (PROPDMG)
+*  Property Damage Magnitude (PROPDMGEXP)
+*  Crop Damage (CROPDMG)
+*  Crop Damage Magnitude (CROPDMGEXP)
+
+Looking at the data in the crop and prop exp fields, looks like it needs tidying:
+
+summary(dat$CROPDMGEXP)
+            ?      0      2      B      k      K      m      M 
+618413      7     19      1      9     21 281832      1   1994 
+
+summary(dat$PROPDMGEXP)
+            -      ?      +      0      1      2      3      4      5      6      7      8      B      h      H 
+465934      1      8      5    216     25     13      4      4     28      4      5      1     40      1      6 
+     K      m      M 
+424665      7  11330
+
+A lot of missing ones, change the read to include na.strings=c(""," ","NA"))
+
+summary(dat$PROPDMGEXP)
+     -      ?      +      0      1      2      3      4      5      6      7      8      B 
+     1      8      5    216     25     13      4      4     28      4      5      1     40 
+     h      H      K      m      M   NA's 
+     1      6 424665      7  11330 465934 
+
+Next to tidy the data
+
+
+```{r Cost tidy Damage Cost}
+library(dplyr)
+
+# Replace missing values with k
+
+# dat2 <- data.frame(Event= NULL, PROP = NULL, CROP = NULL)
+dat2 <- dat %>% select(EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+levels(dat2$PROPDMGEXP)
+dat2$PROPDMGEXP[is.na] <- "K"
+summary(dat2$PROPDMGEXP)
+str(dat2)
+# Change NA in a factor
+
+# Set levels
+levels(dat2$PROPDMGEXP) <- c("K", "M", "B")
+# Replace the values
+for (i in 1:length(DMG)){
+        searchstring <- DMG[[i]]
+        print(searchstring)
+        dat2 <- dat %>%
+                select(EVTYPE, PROPDMGEXP, CROPDMGEXP) %>%
+                mutate(PROPDMGEXPtidy = as.character(PROPDMGEXP))
+}
+
+dat2 <- dat %>% select(EVTYPE, PROPDMGEXP, CROPDMGEXP, PROPDMG, CROPDMG, FATALITIES, INJURIES) %>%
+        mutate(ID = seq_along(EVTYPE))
+
+# Substitute H
+DMG <- c("H", "h")
+datHprop <- dat2 %>%
+        filter(PROPDMGEXP %in% DMG) %>%
+               mutate(PROPDMGEXPtidy = "H", DMGUOM = 100, PropCost = PROPDMG*100)
+table(datHprop$PROPDMGEXPtidy)
+
+# Substitute K
+DMG <- c("K", "k","-", "?", "+", "0", "1", "2", "3", "4", "5")
+datKprop <- dat2 %>%
+        filter(PROPDMGEXP %in% DMG|is.na(PROPDMGEXP)) %>%
+               mutate(PROPDMGEXPtidy = "K", DMGUOM = 1000, PropCost = PROPDMG*1000)
+table(datKprop$PROPDMGEXPtidy)
+
+datKcrop <- dat2 %>%
+        filter(CROPDMGEXP %in% DMG|is.na(CROPDMGEXP)) %>%
+               mutate(CROPDMGEXPtidy = "K", DMGUOM = 1000, CropCost = CROPDMG*1000)
+table(datKcrop$CROPDMGEXPtidy)
+
+# Substitute M
+DMG <- c("M", "m", "6", "7", "8")
+datMprop <- dat2 %>%
+        filter(PROPDMGEXP %in% DMG) %>%
+               mutate(PROPDMGEXPtidy = "M", DMGUOM = 1000000, PropCost = PROPDMG*1000000)
+table(datMprop$PROPDMGEXPtidy)
+
+datMcrop <- dat2 %>%
+        filter(CROPDMGEXP %in% DMG) %>%
+               mutate(CROPDMGEXPtidy = "M", DMGUOM = 1000000, CropCost = CROPDMG*1000000)
+table(datMcrop$CROPDMGEXPtidy)
+
+# Substitute B
+DMG <- c("B", "b")
+datBprop <- dat2 %>%
+        filter(PROPDMGEXP %in% DMG) %>%
+               mutate(PROPDMGEXPtidy = "B", DMGUOM = 1000000000, PropCost = PROPDMG*1000000000)
+table(datBprop$PROPDMGEXPtidy)
+
+datBcrop <- dat2 %>%
+        filter(CROPDMGEXP %in% DMG) %>%
+               mutate(CROPDMGEXPtidy = "B", DMGUOM = 1000000000, CropCost = CROPDMG*1000000000)
+table(datBcrop$CROPDMGEXPtidy)
+# Combine rows
+datcrop <- rbind(datKcrop, datMcrop, datBcrop)
+table(datcrop$CROPDMGEXPtidy)
+
+datprop <- rbind(datHprop, datKprop, datMprop, datBprop)
+table(datprop$PROPDMGEXPtidy)
+
+# Combine Columns
+# dat3 <- cbind(datprop, datcrop)
+# rm(dat3)
+
+dat3 <- merge(datprop, datcrop, by.x = "ID", by.y = "ID")
+
+dat4 <- dat3 %>% mutate(ID, EVTYPE = EVTYPE.x, 
+                        COST = PropCost+CropCost, 
+                        FATALITIES = FATALITIES.x,
+                        INJURIES = INJURIES.x) %>%
+        select(ID, EVTYPE, COST, FATALITIES,INJURIES)
+
+# Set factors
+
+dat2 <- dat2 %>% mutate(PROPDMGEXPtidy = as.character(PROPDMGEXP))
+table(dat2$PROPDMGEXPtidy)
+dat2 <- dat2 %>% mutate(PROPDMGEXPtidy = 
+                                grepl(searchstring, PROPDMGEXP, names(DMG[1]), 
+                                     PROPDMGEXPtidy))
+
+                select(EVTYPE, FATALITIES, INJURIES) %>%
+                filter(grepl(searchstring, EVTYPE)) %>%
+                mutate(Event = names(ET[i]))
+# Dont do replace add new based on old
+
+dat2$PROPDMGEXPtidy <- as.factor(dat2$PROPDMGEXPtidy)
+rm(searchstring)
+# Cost and multiple with the k,m,b values
+
+
+
+# add total cost column with amount
+dat3 <- dat %>%
+        select(PROPDMGEXP, CROPDMGEXP)
+
+
 ```
 
 
